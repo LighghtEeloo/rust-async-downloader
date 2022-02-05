@@ -4,14 +4,14 @@ use structopt::StructOpt;
 struct URLParsingError;
 
 impl fmt::Display for URLParsingError {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        write!(formatter, "URL has invalid format!")
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "URL has invalid format!")
     }
 }
 
 impl fmt::Debug for URLParsingError {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        write!(formatter, "{{ file: {}, line: {} }}", file!(), line!())
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{{ file: {}, line: {} }}", file!(), line!())
     }
 }
 
@@ -27,7 +27,7 @@ impl fmt::Display for Cli {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "urls file: \n{} \n path: {}",
+            "urls file: {} \n path: {}",
             self.urls_file_path.display(),
             self.result_dir_path.display()
         )

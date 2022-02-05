@@ -36,6 +36,7 @@ pub async fn download(
 
     let mut stream = response.bytes_stream();
 
+    eprintln!("{}", url_info.final_path.display());
     let file = File::create(format!("{}", url_info.final_path.display())).await?;
     let mut writer = BufWriter::new(file);
 
