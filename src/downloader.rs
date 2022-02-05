@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
-use async_std::fs::File;
-use async_std::io::Cursor;
-use futures_util::{AsyncWriteExt, StreamExt};
+use tokio::fs::File;
+use tokio::io::{BufWriter, AsyncWriteExt};
+use futures_util::{StreamExt};
 use indicatif::ProgressBar;
 use reqwest::header::ACCEPT;
 
@@ -36,18 +36,15 @@ pub async fn download(
 
     let mut stream = response.bytes_stream();
 
-    let mut file = File::create(format!("{}", url_info.final_path.display())).await?;
+    let file = File::create(format!("{}", url_info.final_path.display())).await?;
+    let mut writer = BufWriter::new(file);
 
     let mut downloaded_length: u64 = 0;
     while let Some(chunk) = stream.next().await {
-        let chunk_data = chunk.unwrap();
-
+        let chunk_data = chunk.expect("chunk error");
         downloaded_length = downloaded_length + (chunk_data.len() as u64);
-
-        let mut content = Cursor::new(chunk_data);
-        async_std::io::copy(&mut content, &mut file).await?;
+        writer.write(&chunk_data).await?;
     }
-    file.close().await?;
 
     progress_bar.inc(1);
     Ok(())
