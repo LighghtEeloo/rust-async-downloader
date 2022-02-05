@@ -1,35 +1,20 @@
-use std::env::args;
 use std::path::PathBuf;
 
 use async_std::fs::File;
 use async_std::io::Cursor;
-use async_std::io::WriteExt;
 use futures_util::{AsyncWriteExt, StreamExt};
-use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
+use indicatif::ProgressBar;
 use reqwest::header::ACCEPT;
-use reqwest::Response;
 
 struct FileInfo {
-    total_size: u64,
-    file_name: String,
     final_path: PathBuf,
 }
 
 impl FileInfo {
-    fn new(url: &String, path: &PathBuf, response: &Response) -> Self {
+    fn new(url: &String, path: &PathBuf) -> Self {
         let file_name = url.split('/').next_back().unwrap();
         let final_path = path.join(file_name);
-
-        let total_size_option = response.content_length();
-
-        let total_size = match total_size_option {
-            Some(size) => size,
-            None => panic!("no response length!"),
-        };
-
         return FileInfo {
-            total_size: total_size,
-            file_name: file_name.to_string(),
             final_path: final_path,
         };
     }
@@ -47,13 +32,11 @@ pub async fn download(
         .send()
         .await?;
 
-    let url_info = FileInfo::new(url, path, &response);
+    let url_info = FileInfo::new(url, path);
 
     let mut stream = response.bytes_stream();
 
     let mut file = File::create(format!("{}", url_info.final_path.display())).await?;
-
-
 
     let mut downloaded_length: u64 = 0;
     while let Some(chunk) = stream.next().await {
