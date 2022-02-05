@@ -15,38 +15,46 @@ impl FileInfo {
         let file_name = url.split('/').next_back().unwrap();
         let final_path = path.join(file_name);
         return FileInfo {
-            final_path: final_path,
+            final_path,
         };
     }
 }
 
-pub async fn download(
-    url: &String,
-    path: &std::path::PathBuf,
-    progress_bar: &ProgressBar,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let client = reqwest::Client::new();
-    let response = client
-        .get(url)
-        .header(ACCEPT, "application/pdf")
-        .send()
-        .await?;
+pub struct Downloader<'a> {
+    progress_bar: &'a ProgressBar,
+}
 
-    let url_info = FileInfo::new(url, path);
-
-    let mut stream = response.bytes_stream();
-
-    eprintln!("{}", url_info.final_path.display());
-    let file = File::create(format!("{}", url_info.final_path.display())).await?;
-    let mut writer = BufWriter::new(file);
-
-    let mut downloaded_length: u64 = 0;
-    while let Some(chunk) = stream.next().await {
-        let chunk_data = chunk.expect("chunk error");
-        downloaded_length = downloaded_length + (chunk_data.len() as u64);
-        writer.write(&chunk_data).await?;
+impl<'a> Downloader<'a> {
+    pub fn with_progress_bar(progress_bar: &'a ProgressBar) -> Self {
+        Self { progress_bar }
     }
+    pub async fn download(
+        &self,
+        url: &String,
+        path: &std::path::PathBuf,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let client = reqwest::Client::new();
+        let response = client
+            .get(url)
+            .header(ACCEPT, "application/pdf")
+            .send()
+            .await?;
 
-    progress_bar.inc(1);
-    Ok(())
+        let url_info = FileInfo::new(url, path);
+
+        let mut stream = response.bytes_stream();
+
+        let file = File::create(format!("{}", url_info.final_path.display())).await?;
+        let mut writer = BufWriter::new(file);
+
+        let mut downloaded_length: u64 = 0;
+        while let Some(chunk) = stream.next().await {
+            let chunk_data = chunk.expect("chunk error");
+            downloaded_length = downloaded_length + (chunk_data.len() as u64);
+            writer.write(&chunk_data).await?;
+        }
+
+        self.progress_bar.inc(1);
+        Ok(())
+    }
 }
